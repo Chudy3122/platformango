@@ -2,7 +2,8 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import { useClerk, useUser } from "@clerk/clerk-react";
 
-const AuthContext = createContext({ user: null });
+// Dodaj ten eksport
+export const AuthContext = createContext({ user: null });
 
 export const AuthProvider = ({ children }) => {
   const { user: clerkUser } = useUser();
