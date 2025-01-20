@@ -9,7 +9,7 @@ import { useTranslations } from "@/hooks/useTranslations";
 import { useParams } from "next/navigation";
 import axios from "axios";
 import { io } from "socket.io-client";
-import { useUser } from "@clerk/clerk-react";
+import { useUser } from "@clerk/nextjs";
 
 export default function Messenger() {
   const [conversations, setConversations] = useState([]);
@@ -24,6 +24,10 @@ export default function Messenger() {
   const t = useTranslations();
   const params = useParams();
   const lang = params?.lang || 'pl';
+
+  if (!user) {
+    return <div>Ładowanie...</div>;
+  }
 
   useEffect(() => {
     if (!socket.current && user?.id) {

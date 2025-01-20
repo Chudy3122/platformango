@@ -1,11 +1,22 @@
 import { NextResponse } from "next/server";
+import { auth } from "@clerk/nextjs/server";
 import prisma from "@/lib/prisma";
+
+export const dynamic = 'force-dynamic'; // Wymusza dynamiczne renderowanie
 
 export async function GET(request: Request) {
   try {
-    const { searchParams } = new URL(request.url);
-    const userId = searchParams.get('userId');
-    const userType = searchParams.get('userType');
+    const { userId: authUserId } = await auth();
+    if (!authUserId) {
+      return NextResponse.json(
+        { error: "Unauthorized" },
+        { status: 401 }
+      );
+    }
+
+    const url = new URL(request.url);
+    const userId = url.searchParams.get('userId');
+    const userType = url.searchParams.get('userType');
 
     if (!userId || !userType) {
       return NextResponse.json(

@@ -1,7 +1,8 @@
-// app/api/users/search/route.ts
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { auth } from "@clerk/nextjs/server";
+
+export const dynamic = 'force-dynamic'; // Wymusza dynamiczne renderowanie
 
 export async function GET(req: Request) {
   try {
@@ -29,7 +30,8 @@ export async function GET(req: Request) {
           username: true,
           name: true,
           email: true,
-        }
+        },
+        take: 10 // Ogranicz liczbę zwracanych adminów
       }),
 
       // Wyszukiwanie nauczycieli
@@ -48,7 +50,8 @@ export async function GET(req: Request) {
           name: true,
           surname: true,
           email: true,
-        }
+        },
+        take: 10 // Ogranicz liczbę zwracanych nauczycieli
       }),
 
       // Wyszukiwanie rodziców
@@ -67,7 +70,8 @@ export async function GET(req: Request) {
           name: true,
           surname: true,
           email: true,
-        }
+        },
+        take: 10 // Ogranicz liczbę zwracanych rodziców
       }),
 
       // Wyszukiwanie uczniów
@@ -86,7 +90,8 @@ export async function GET(req: Request) {
           name: true,
           surname: true,
           email: true,
-        }
+        },
+        take: 10 // Ogranicz liczbę zwracanych uczniów
       })
     ]);
 

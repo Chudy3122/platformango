@@ -1,24 +1,48 @@
+'use client';
+
+import { useEffect, useState } from "react";
+import axios from "axios";
+import { useUser } from "@clerk/nextjs";
+import { useParams } from "next/navigation";
+
 import "./profile.css";
 import Topbar from "../../components/topbar/Topbar";
 import Sidebar from "../../components/sidebar/Sidebar";
 import Feed from "../../components/feed/Feed";
 import Rightbar from "../../components/rightbar/Rightbar";
-import { useEffect, useState } from "react";
-import axios from "axios";
-import { useParams } from "react-router";
 
 export default function Profile() {
-  const PF = process.env.REACT_APP_PUBLIC_FOLDER;
+  const { user: clerkUser, isLoaded } = useUser();
   const [user, setUser] = useState({});
-  const username = useParams().username;
+  const params = useParams();
+  const username = params?.username; // Usuń as string
 
   useEffect(() => {
     const fetchUser = async () => {
-      const res = await axios.get(`/users?username=${username}`);
-      setUser(res.data);
+      if (!username) return;
+      
+      try {
+        const res = await axios.get(`/users?username=${username}`);
+        setUser(res.data);
+      } catch (error) {
+        console.error("Error fetching user:", error);
+      }
     };
+    
     fetchUser();
   }, [username]);
+
+  // Obsługa ładowania
+  if (!isLoaded) {
+    return <div>Ładowanie...</div>;
+  }
+
+  // Obsługa braku użytkownika
+  if (!clerkUser) {
+    return <div>Nie jesteś zalogowany</div>;
+  }
+
+  const PF = process.env.NEXT_PUBLIC_PUBLIC_FOLDER;
 
   return (
     <>
@@ -32,8 +56,8 @@ export default function Profile() {
                 className="profileCoverImg"
                 src={
                   user.coverPicture
-                    ? PF + user.coverPicture
-                    : PF + "person/noCover.png"
+                    ? `${PF}${user.coverPicture}`
+                    : `${PF}person/noCover.png`
                 }
                 alt=""
               />
@@ -41,8 +65,8 @@ export default function Profile() {
                 className="profileUserImg"
                 src={
                   user.profilePicture
-                    ? PF + user.profilePicture
-                    : PF + "person/noAvatar.png"
+                    ? `${PF}${user.profilePicture}`
+                    : `${PF}person/noAvatar.png`
                 }
                 alt=""
               />

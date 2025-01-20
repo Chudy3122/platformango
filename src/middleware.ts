@@ -5,6 +5,14 @@ import type { NextRequest } from "next/server";
 const locales = ["pl", "en"];
 const defaultLocale = "pl";
 
+// Dodaj publiczne trasy
+const publicRoutes = [
+  "/login", 
+  "/sign-up", 
+  "/", 
+  "/api/debug"  // jeśli chcesz, żeby była publicznie dostępna
+];
+
 function getLocale(pathname: string): string {
   const locale = pathname.split('/')[1];
   return locales.includes(locale) ? locale : defaultLocale;
@@ -14,11 +22,12 @@ export default clerkMiddleware(async (auth, request: NextRequest) => {
   const { pathname } = new URL(request.url);
   const locale = getLocale(pathname);
 
-  // Sprawdź czy to ścieżka API
-  if (pathname.includes('/api/')) {
+  // Sprawdź czy to publiczna trasa
+  if (publicRoutes.some(route => pathname.startsWith(route))) {
     return NextResponse.next();
   }
 
+  // Reszta twojego kodu pozostaje bez zmian
   // Jeśli brakuje locale, przekieruj
   if (!locales.includes(locale)) {
     return NextResponse.redirect(new URL(`/${defaultLocale}${pathname}`, request.url));
@@ -39,6 +48,9 @@ export default clerkMiddleware(async (auth, request: NextRequest) => {
   }
 
   return NextResponse.next();
+}, {
+  // Opcjonalna konfiguracja Clerk
+  debug: process.env.NODE_ENV !== 'production'
 });
 
 export const config = {
