@@ -1,10 +1,10 @@
 "use client";
 
 import "./messenger.css";
-import Topbar from "../../components/topbar/Topbar";
-import Conversation from "../../components/conversations/Conversation";
-import Message from "../../components/message/Message";
-import ChatOnline from "../../components/chatOnline/ChatOnline";
+import Topbar from "../../components/topbar/page.jsx";
+import Conversation from "../../components/conversations/page.jsx";
+import Message from "../../components/message/page.jsx";
+import ChatOnline from "../../components/chatOnline/page.jsx";
 import { useContext, useEffect, useRef, useState } from "react";
 import { AuthContext } from "../../context/AuthContext";
 import { useTranslations } from "@/hooks/useTranslations";
