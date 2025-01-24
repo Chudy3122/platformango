@@ -13,7 +13,7 @@ export default function Profile() {
   const { user: clerkUser, isLoaded } = useUser();
   const [user, setUser] = useState({});
   const params = useParams();
-  const username = params?.username; // Usuń as string
+  const username = params?.username;
 
   useEffect(() => {
     const fetchUser = async () => {
@@ -30,12 +30,10 @@ export default function Profile() {
     fetchUser();
   }, [username]);
 
-  // Obsługa ładowania
   if (!isLoaded) {
     return <div>Ładowanie...</div>;
   }
 
-  // Obsługa braku użytkownika
   if (!clerkUser) {
     return <div>Nie jesteś zalogowany</div>;
   }
@@ -75,8 +73,7 @@ export default function Profile() {
             </div>
           </div>
           <div className="profileRightBottom">
-            <Feed username={username} />
-            <Rightbar user={user} />
+            {/* Usuń komponenty Feed i Rightbar */}
           </div>
         </div>
       </div>

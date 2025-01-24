@@ -1,29 +1,48 @@
 "use client";
 
-import "./page.css";
+import { useEffect, useState, useRef, useCallback } from "react";
+import { useTranslations } from "@/hooks/useTranslations";
+import { useParams } from "next/navigation";
+import { useUser } from "@clerk/nextjs";
+import axios from "axios";
+import { io } from "socket.io-client";
 import Conversation from "@/components/conversations/page";
 import Message from "@/components/message/page";
 import SearchCreateConversation from "@/components/searchCreateConversation/page";
-import { useEffect, useState, useRef } from "react";
-import { useTranslations } from "@/hooks/useTranslations";
-import { useParams } from "next/navigation";
-import axios from "axios";
-import { io } from "socket.io-client";
-import { useUser } from "@clerk/nextjs";
+import "./page.css";
 
 export default function Messenger() {
+  const { user } = useUser();
   const [conversations, setConversations] = useState([]);
   const [currentChat, setCurrentChat] = useState(null);
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [arrivalMessage, setArrivalMessage] = useState(null);
-  const { user } = useUser();
   const scrollRef = useRef();
   const socket = useRef();
   const t = useTranslations();
   const params = useParams();
   const lang = params?.lang || 'pl';
+
+  const fetchConversations = useCallback(async () => {
+    if (!user?.id) return;
+    try {
+      const res = await axios.get('/api/conversations');
+      const formattedConversations = res.data.map(conv => ({
+        ...conv,
+        _id: conv.id?.toString(),
+        members: Array.isArray(conv.members) ? conv.members : [user.id, conv.userId]
+      }));
+      setConversations(formattedConversations);
+      setIsLoading(false);
+    } catch (err) {
+      console.error("Error fetching conversations:", err);
+      setConversations([]);
+      setIsLoading(false);
+    }
+  }, [user]);
+
 
   if (!user) {
     return <div>Ładowanie...</div>;
@@ -85,29 +104,6 @@ export default function Messenger() {
         };
     }
   }, [user]);
-
-  const fetchConversations = async () => {
-    if (!user?.id) return;
-
-    try {
-      const res = await axios.get('/api/conversations');  // ZMIENIONA LINIA
-      console.log("Fetched conversations:", res.data);
-
-      if (Array.isArray(res.data)) {
-        const formattedConversations = res.data.map(conv => ({
-          ...conv,
-          _id: conv.id?.toString(),
-          members: Array.isArray(conv.members) ? conv.members : [user.id, conv.userId]
-        }));
-        setConversations(formattedConversations);
-      }
-    } catch (err) {
-      console.error("Error fetching conversations:", err);
-      setConversations([]);
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
   useEffect(() => {
     fetchConversations();
