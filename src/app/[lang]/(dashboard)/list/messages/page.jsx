@@ -43,71 +43,68 @@ export default function Messenger() {
     }
   }, [user]);
 
-
-  if (!user) {
-    return <div>Ładowanie...</div>;
-  }
-
   useEffect(() => {
     if (!socket.current && user?.id) {
-        try {
-            socket.current = io("http://localhost:8900", {
-                path: "/socket.io/",
-                transports: ['polling', 'websocket'],
-                autoConnect: true,
-                reconnection: true,
-                reconnectionAttempts: 5,
-                reconnectionDelay: 1000,
-                timeout: 60000,
-                withCredentials: true
-            });
+      try {
+        socket.current = io("http://localhost:8900", {
+          path: "/socket.io/",
+          transports: ['polling', 'websocket'],
+          autoConnect: true,
+          reconnection: true,
+          reconnectionAttempts: 5,
+          reconnectionDelay: 1000,
+          timeout: 60000,
+          withCredentials: true
+        });
 
-            socket.current.on("connect", () => {
-                console.log("Socket connected with ID:", socket.current.id);
-                socket.current.emit("addUser", user.id);
-            });
+        socket.current.on("connect", () => {
+          console.log("Socket connected with ID:", socket.current.id);
+          socket.current.emit("addUser", user.id);
+        });
 
-            socket.current.on("getMessage", (data) => {
-                console.log("Received message:", data);
-                setArrivalMessage({
-                    sender: data.senderId,
-                    content: data.text,
-                    createdAt: new Date()
-                });
-            });
+        socket.current.on("getMessage", (data) => {
+          console.log("Received message:", data);
+          setArrivalMessage({
+            sender: data.senderId,
+            content: data.text,
+            createdAt: new Date()
+          });
+        });
 
-            socket.current.io.on("error", (error) => {
-                console.error("Socket Error:", error);
-            });
+        socket.current.io.on("error", (error) => {
+          console.error("Socket Error:", error);
+        });
 
-            socket.current.io.on("reconnect", (attempt) => {
-                console.log("Socket Reconnected after", attempt, "attempts");
-                socket.current.emit("addUser", user.id);
-            });
+        socket.current.io.on("reconnect", (attempt) => {
+          console.log("Socket Reconnected after", attempt, "attempts");
+          socket.current.emit("addUser", user.id);
+        });
 
-            socket.current.io.on("reconnect_attempt", (attempt) => {
-                console.log("Reconnection attempt:", attempt);
-            });
+        socket.current.io.on("reconnect_attempt", (attempt) => {
+          console.log("Reconnection attempt:", attempt);
+        });
 
-            socket.current.io.on("reconnect_error", (error) => {
-                console.error("Reconnection error:", error);
-            });
+        socket.current.io.on("reconnect_error", (error) => {
+          console.error("Reconnection error:", error);
+        });
 
-        } catch (err) {
-            console.error("Socket initialization error:", err);
+      } catch (err) {
+        console.error("Socket initialization error:", err);
+      }
+
+      return () => {
+        if (socket.current) {
+          socket.current.disconnect();
         }
-
-        return () => {
-            if (socket.current) {
-                socket.current.disconnect();
-            }
-        };
+      };
     }
   }, [user]);
 
   useEffect(() => {
-    fetchConversations();
-  }, [user]);
+    if (user?.id) {
+      fetchConversations();
+    }
+  }, [user, fetchConversations]);
 
   useEffect(() => {
     if (arrivalMessage && currentChat?.members?.includes(arrivalMessage.sender)) {
