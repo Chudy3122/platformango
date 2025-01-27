@@ -1,26 +1,47 @@
-// src/pages/profile/Profile.jsx
-"use client";
+'use client';
 
-import "./profile.css";
-import Topbar from '@/components/topbar/page';
-import Sidebar from '@/components/Sidebar';
+import Image from 'next/image';
 import { useEffect, useState } from "react";
 import axios from "axios";
-import { useParams, useRouter } from "next/navigation";  // zmienione z react-router
+import { useUser } from "@clerk/nextjs";
+import { useParams } from "next/navigation";
+
+import "./profile.css";
+import Topbar from "../../components/topbar/page";
+import Sidebar from "../../components/Sidebar";
 
 export default function Profile() {
-  const PF = process.env.NEXT_PUBLIC_PUBLIC_FOLDER;
+  const { user: clerkUser, isLoaded } = useUser();
   const [user, setUser] = useState({});
-  const params = useParams();  // zmienione z useParams z react-router
+  const params = useParams();
   const username = params?.username;
 
   useEffect(() => {
     const fetchUser = async () => {
-      const res = await axios.get(`/users?username=${username}`);
-      setUser(res.data);
+      if (!username) return;
+      
+      try {
+        const res = await axios.get(`/users?username=${username}`);
+        setUser(res.data);
+      } catch (error) {
+        console.error("Error fetching user:", error);
+      }
     };
+    
     fetchUser();
   }, [username]);
+
+  // Obsługa ładowania
+  if (!isLoaded) {
+    return <div>Ładowanie...</div>;
+  }
+
+  // Obsługa braku użytkownika
+  if (!clerkUser) {
+    return <div>Nie jesteś zalogowany</div>;
+  }
+
+  const PF = process.env.NEXT_PUBLIC_PUBLIC_FOLDER;
 
   return (
     <>
@@ -30,23 +51,29 @@ export default function Profile() {
         <div className="profileRight">
           <div className="profileRightTop">
             <div className="profileCover">
-              <img
+              <Image
                 className="profileCoverImg"
                 src={
                   user.coverPicture
-                    ? PF + user.coverPicture
-                    : PF + "person/noCover.png"
+                    ? `${PF}${user.coverPicture}`
+                    : `${PF}person/noCover.png`
                 }
-                alt=""
+                alt="Cover"
+                width={500}
+                height={200}
+                priority
               />
-              <img
+              <Image
                 className="profileUserImg"
                 src={
                   user.profilePicture
-                    ? PF + user.profilePicture
-                    : PF + "person/noAvatar.png"
+                    ? `${PF}${user.profilePicture}`
+                    : `${PF}person/noAvatar.png`
                 }
-                alt=""
+                alt="Profile"
+                width={150}
+                height={150}
+                priority
               />
             </div>
             <div className="profileInfo">
@@ -54,7 +81,9 @@ export default function Profile() {
               <span className="profileInfoDesc">{user.desc}</span>
             </div>
           </div>
-          {/* Usunęliśmy sekcję profileRightBottom z Feed i Rightbar */}
+          <div className="profileRightBottom">
+            {/* Usunąć Feed i Rightbar jeśli nie istnieją */}
+          </div>
         </div>
       </div>
     </>
