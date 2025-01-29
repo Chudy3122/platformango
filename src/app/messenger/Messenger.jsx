@@ -5,7 +5,7 @@ import Topbar from "../../components/topbar/page.jsx";
 import Conversation from "../../components/conversations/page.jsx";
 import Message from "../../components/message/page.jsx";
 import ChatOnline from "../../components/chatOnline/page.jsx";
-import { useEffect, useRef, useState, useMemo } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { useUser } from "@clerk/nextjs";
 import { useTranslations } from "@/hooks/useTranslations";
 import { useParams } from "next/navigation";
@@ -26,7 +26,17 @@ export default function Messenger() {
   const lang = params?.lang || 'pl';
   const t = useTranslations();
 
-  // Hooks są zawsze wywoływane, niezależnie od warunków
+  const fetchConversations = useCallback(async () => {
+    if (!clerkUser?.id) return;
+    try {
+      const res = await axios.get("/api/conversations");
+      setConversations(res.data);
+    } catch (err) {
+      console.error("Błąd pobierania konwersacji:", err);
+    }
+  }, [clerkUser]);
+
+  // Reszta kodu pozostaje bez zmian
   useEffect(() => {
     if (typeof window === 'undefined' || !isLoaded || !clerkUser) return;
 
@@ -42,7 +52,11 @@ export default function Messenger() {
     return () => {
       socket.current?.disconnect();
     };
-  }, [isLoaded, clerkUser]);
+  }, [clerkUser, isLoaded]);
+
+  useEffect(() => {
+    fetchConversations();
+  }, [fetchConversations]);
 
   useEffect(() => {
     if (!isLoaded || !clerkUser) return;
