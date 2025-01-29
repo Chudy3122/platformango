@@ -26,18 +26,15 @@ export default function Messenger() {
   const lang = params?.lang || 'pl';
   const t = useTranslations();
 
-  const fetchConversations = useCallback(async () => {
-    if (!clerkUser?.id) return;
-    try {
-      const res = await axios.get("/api/conversations");
-      setConversations(res.data);
-    } catch (err) {
-      console.error("Błąd pobierania konwersacji:", err);
+  const getOnlineUsers = useCallback(() => {
+    if (socket.current) {
+      socket.current.on("getUsers", (users) => {
+        setOnlineUsers(users);
+      });
     }
-  }, [clerkUser]);
+  }, []);
 
-  // Reszta kodu pozostaje bez zmian
-  useEffect(() => {
+  const initializeSocket = useCallback(() => {
     if (typeof window === 'undefined' || !isLoaded || !clerkUser) return;
 
     socket.current = io("ws://localhost:8900");
@@ -49,74 +46,42 @@ export default function Messenger() {
       });
     });
 
+    socket.current.emit("addUser", clerkUser.id);
+    getOnlineUsers();
+
     return () => {
       socket.current?.disconnect();
     };
-  }, [clerkUser, isLoaded]);
+  }, [clerkUser, isLoaded, getOnlineUsers]);
 
   useEffect(() => {
-    fetchConversations();
-  }, [fetchConversations]);
+    const cleanup = initializeSocket();
+    return cleanup;
+  }, [initializeSocket]);
 
   useEffect(() => {
-    if (!isLoaded || !clerkUser) return;
     if (arrivalMessage && currentChat?.members.includes(arrivalMessage.sender)) {
       setMessages((prev) => [...prev, arrivalMessage]);
     }
-  }, [arrivalMessage, currentChat, isLoaded, clerkUser]);
-
-  useEffect(() => {
-    if (!isLoaded || !clerkUser) return;
-    if (socket.current) {
-      socket.current.emit("addUser", clerkUser.id);
-      socket.current.on("getUsers", (users) => {
-        setOnlineUsers(users);
-      });
-    }
-  }, [clerkUser, isLoaded]);
-
-  useEffect(() => {
-    if (!isLoaded || !clerkUser) return;
-    const getConversations = async () => {
-      try {
-        const res = await axios.get("/api/conversations");
-        setConversations(res.data);
-      } catch (err) {
-        console.error("Błąd pobierania konwersacji:", err);
-      }
-    };
-    getConversations();
-  }, [clerkUser.id, isLoaded]);
-
-  useEffect(() => {
-    if (!currentChat?._id) return;
-    const getMessages = async () => {
-      try {
-        const res = await axios.get(`/api/messages?conversationId=${currentChat._id}`);
-        setMessages(res.data);
-      } catch (err) {
-        console.error("Błąd pobierania wiadomości:", err);
-      }
-    };
-    getMessages();
-  }, [currentChat]);
+  }, [arrivalMessage, currentChat]);
 
   useEffect(() => {
     scrollRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  // Renderowanie warunkowe
-  if (typeof window === 'undefined') {
-    return null;
-  }
+  const fetchConversations = useCallback(async () => {
+    if (!clerkUser?.id) return;
+    try {
+      const res = await axios.get("/api/conversations");
+      setConversations(res.data);
+    } catch (err) {
+      console.error("Błąd pobierania konwersacji:", err);
+    }
+  }, [clerkUser]);
 
-  if (!isLoaded) {
-    return <div>Ładowanie...</div>;
-  }
-
-  if (!clerkUser) {
-    return <div>Nie jesteś zalogowany</div>;
-  }
+  useEffect(() => {
+    fetchConversations();
+  }, [fetchConversations]);
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -148,6 +113,19 @@ export default function Messenger() {
       console.error("Błąd wysyłania wiadomości:", err);
     }
   };
+
+  // Renderowanie warunkowe
+  if (typeof window === 'undefined') {
+    return null;
+  }
+
+  if (!isLoaded) {
+    return <div>Ładowanie...</div>;
+  }
+
+  if (!clerkUser) {
+    return <div>Nie jesteś zalogowany</div>;
+  }
 
   return (
     <>
