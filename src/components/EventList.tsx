@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useTranslations } from '@/hooks/useTranslations';
 import { useUser } from '@clerk/nextjs';
 import { format } from 'date-fns';
@@ -108,12 +108,7 @@ interface Filters {
 interface EventListProps {
   limit?: number;
   compact?: boolean;
-  date?: string;  // Add this line
-}
-
-interface EventListProps {
-  limit?: number;
-  compact?: boolean;
+  date?: string;
 }
 
 export default function EventList({ 
@@ -141,42 +136,7 @@ export default function EventList({
   const { user } = useUser();
   const t = useTranslations();
 
-  const getUserDisplayName = (userData?: ParticipantStudent | ParticipantTeacher | ParticipantAdmin | ParticipantParent) => {
-    if (!userData) return 'Unknown User';
-    if (userData.name && userData.surname) return `${userData.name} ${userData.surname}`;
-    return userData.username;
-  };
-
-  const getAuthorDisplayName = (event: Event) => {
-    const author = event.authorStudent || event.authorTeacher || event.authorAdmin || event.authorParent;
-    if (!author) return 'Unknown User';
-    if (author.name && author.surname) return `${author.name} ${author.surname}`;
-    return author.username;
-  };
-
-  const handleDeleteEvent = async (eventId: number) => {
-    if (!confirm(t.events.delete.confirm)) {
-      return;
-    }
-  
-    try {
-      const response = await fetch(`/api/events/${eventId}`, {
-        method: 'DELETE',
-      });
-  
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error || 'Failed to delete event');
-      }
-  
-      await fetchEvents();
-      
-    } catch (error) {
-      console.error('Error deleting event:', error);
-    }
-  };
-
-  const calculateStats = (eventsList: Event[]) => {
+  const calculateStats = useCallback((eventsList: Event[]) => {
     const now = new Date();
     const thisMonth = now.getMonth();
     const thisYear = now.getFullYear();
@@ -199,9 +159,64 @@ export default function EventList({
     };
   
     setStats(newStats);
-  };
+  }, [user?.id]);
 
-  const handleParticipation = async (eventId: number, status: ParticipationStatus) => {
+  const fetchEvents = useCallback(async () => {
+    try {
+      setLoading(true);
+      const response = await fetch('/api/events');
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch events');
+      }
+      
+      const data = await response.json();
+      setEvents(data);
+      calculateStats(data);
+    } catch (err) {
+      console.error('Error fetching events:', err);
+      setError(err instanceof Error ? err.message : 'Failed to fetch events');
+    } finally {
+      setLoading(false);
+    }
+  }, [calculateStats]);
+
+  const getUserDisplayName = useCallback((userData?: ParticipantStudent | ParticipantTeacher | ParticipantAdmin | ParticipantParent) => {
+    if (!userData) return 'Unknown User';
+    if (userData.name && userData.surname) return `${userData.name} ${userData.surname}`;
+    return userData.username;
+  }, []);
+
+  const getAuthorDisplayName = useCallback((event: Event) => {
+    const author = event.authorStudent || event.authorTeacher || event.authorAdmin || event.authorParent;
+    if (!author) return 'Unknown User';
+    if (author.name && author.surname) return `${author.name} ${author.surname}`;
+    return author.username;
+  }, []);
+
+  const handleDeleteEvent = useCallback(async (eventId: number) => {
+    if (!confirm(t.events.delete.confirm)) {
+      return;
+    }
+  
+    try {
+      const response = await fetch(`/api/events/${eventId}`, {
+        method: 'DELETE',
+      });
+  
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || 'Failed to delete event');
+      }
+  
+      await fetchEvents();
+      
+    } catch (error) {
+      console.error('Error deleting event:', error);
+    }
+  }, [fetchEvents, t]);
+
+  const handleParticipation = useCallback(async (eventId: number, status: ParticipationStatus) => {
     try {
       const response = await fetch('/api/events/participation', {
         method: 'POST',
@@ -216,32 +231,11 @@ export default function EventList({
     } catch (error) {
       console.error('Error updating participation:', error);
     }
-  };
-
-  const fetchEvents = async () => {
-    try {
-      setLoading(true);
-      const response = await fetch('/api/events');
-      
-      if (!response.ok) {
-        throw new Error('Failed to fetch events');
-      }
-      
-      const data = await response.json();
-      setEvents(data);
-      setFilteredEvents(data);
-      calculateStats(data);
-    } catch (err) {
-      console.error('Error fetching events:', err);
-      setError(err instanceof Error ? err.message : 'Failed to fetch events');
-    } finally {
-      setLoading(false);
-    }
-  };
+  }, [fetchEvents]);
 
   useEffect(() => {
     fetchEvents();
-  }, [user]);
+  }, [fetchEvents]);
 
   useEffect(() => {
     const applyFilters = (eventsList: Event[]) => {

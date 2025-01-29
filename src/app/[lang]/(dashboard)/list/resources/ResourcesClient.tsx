@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { FileText, Book, Package, Upload, Download, Info, Trash2 } from "lucide-react";
 import { useUser } from "@clerk/nextjs";
 import { useTranslations } from "@/hooks/useTranslations";
@@ -53,7 +53,7 @@ export default function ResourcesClient({ userRole }: ResourcesClientProps) {
   const [selectedFile, setSelectedFile] = useState<ResourceFile | null>(null);
   const [showUploadModal, setShowUploadModal] = useState(false);
 
-  const fetchFiles = async () => {
+  const fetchFiles = useCallback(async () => {
     setLoading(true);
     try {
       const response = await fetch(`/api/resources?section=${activeSection}`);
@@ -66,11 +66,11 @@ export default function ResourcesClient({ userRole }: ResourcesClientProps) {
     } finally {
       setLoading(false);
     }
-  };
+  }, [activeSection]);
 
   useEffect(() => {
     fetchFiles();
-  }, [activeSection]);
+  }, [fetchFiles]);
 
   const formatFileSize = (bytes: number) => {
     if (bytes === 0) return '0 Bytes';

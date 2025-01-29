@@ -16,19 +16,9 @@ export default function Profile() {
   const params = useParams();
   const username = params?.username;
 
-  // Obsługa ładowania
-  if (!isLoaded) {
-    return <div>Ładowanie...</div>;
-  }
-
-  // Obsługa braku użytkownika
-  if (!clerkUser) {
-    return <div>Nie jesteś zalogowany</div>;
-  }
-
   useEffect(() => {
     const fetchUser = async () => {
-      if (!username) return;
+      if (!username || !clerkUser) return;
       
       try {
         const res = await axios.get(`/users?username=${username}`);
@@ -39,9 +29,22 @@ export default function Profile() {
     };
     
     fetchUser();
-  }, [username]);
+  }, [username, clerkUser]);
 
-  const PF = process.env.NEXT_PUBLIC_PUBLIC_FOLDER;
+  // Renderowanie warunkowe przeniesione na koniec
+  if (typeof window === 'undefined') {
+    return null;
+  }
+
+  if (!isLoaded) {
+    return <div>Ładowanie...</div>;
+  }
+
+  if (!clerkUser) {
+    return <div>Nie jesteś zalogowany</div>;
+  }
+
+  const PF = process.env.NEXT_PUBLIC_PUBLIC_FOLDER || '/';
 
   return (
     <>
@@ -77,8 +80,8 @@ export default function Profile() {
               />
             </div>
             <div className="profileInfo">
-              <h4 className="profileInfoName">{user.username}</h4>
-              <span className="profileInfoDesc">{user.desc}</span>
+              <h4 className="profileInfoName">{user.username || clerkUser.username}</h4>
+              <span className="profileInfoDesc">{user.desc || 'Brak opisu'}</span>
             </div>
           </div>
           <div className="profileRightBottom">
