@@ -1,5 +1,6 @@
 'use client';
 
+import Image from 'next/image';
 import "./messenger.css";
 import Topbar from "../../components/topbar/page.jsx";
 import Conversation from "../../components/conversations/page.jsx";
@@ -26,12 +27,11 @@ export default function Messenger() {
   const lang = params?.lang || 'pl';
   const t = useTranslations();
 
-  // Renderuj tylko po stronie klienta
+  // Przeniesienie warunków przed hookami
   if (typeof window === 'undefined') {
     return null;
   }
 
-  // Obsługa ładowania i autoryzacji
   if (!isLoaded) {
     return <div>Ładowanie...</div>;
   }
@@ -65,7 +65,6 @@ export default function Messenger() {
     if (socket.current) {
       socket.current.emit("addUser", clerkUser.id);
       socket.current.on("getUsers", (users) => {
-        // Dostosuj logikę online users do Clerk
         setOnlineUsers(users);
       });
     }
