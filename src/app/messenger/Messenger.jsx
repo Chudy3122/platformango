@@ -1,12 +1,11 @@
 'use client';
 
-import Image from 'next/image';
 import "./messenger.css";
 import Topbar from "../../components/topbar/page.jsx";
 import Conversation from "../../components/conversations/page.jsx";
 import Message from "../../components/message/page.jsx";
 import ChatOnline from "../../components/chatOnline/page.jsx";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useMemo } from "react";
 import { useUser } from "@clerk/nextjs";
 import { useTranslations } from "@/hooks/useTranslations";
 import { useParams } from "next/navigation";
@@ -27,20 +26,10 @@ export default function Messenger() {
   const lang = params?.lang || 'pl';
   const t = useTranslations();
 
-  // Przeniesienie warunków przed hookami
-  if (typeof window === 'undefined') {
-    return null;
-  }
-
-  if (!isLoaded) {
-    return <div>Ładowanie...</div>;
-  }
-
-  if (!clerkUser) {
-    return <div>Nie jesteś zalogowany</div>;
-  }
-
+  // Hooks są zawsze wywoływane, niezależnie od warunków
   useEffect(() => {
+    if (typeof window === 'undefined' || !isLoaded || !clerkUser) return;
+
     socket.current = io("ws://localhost:8900");
     socket.current.on("getMessage", (data) => {
       setArrivalMessage({
@@ -53,24 +42,27 @@ export default function Messenger() {
     return () => {
       socket.current?.disconnect();
     };
-  }, []);
+  }, [isLoaded, clerkUser]);
 
   useEffect(() => {
+    if (!isLoaded || !clerkUser) return;
     if (arrivalMessage && currentChat?.members.includes(arrivalMessage.sender)) {
       setMessages((prev) => [...prev, arrivalMessage]);
     }
-  }, [arrivalMessage, currentChat]);
+  }, [arrivalMessage, currentChat, isLoaded, clerkUser]);
 
   useEffect(() => {
+    if (!isLoaded || !clerkUser) return;
     if (socket.current) {
       socket.current.emit("addUser", clerkUser.id);
       socket.current.on("getUsers", (users) => {
         setOnlineUsers(users);
       });
     }
-  }, [clerkUser]);
+  }, [clerkUser, isLoaded]);
 
   useEffect(() => {
+    if (!isLoaded || !clerkUser) return;
     const getConversations = async () => {
       try {
         const res = await axios.get("/api/conversations");
@@ -80,11 +72,11 @@ export default function Messenger() {
       }
     };
     getConversations();
-  }, [clerkUser.id]);
+  }, [clerkUser.id, isLoaded]);
 
   useEffect(() => {
+    if (!currentChat?._id) return;
     const getMessages = async () => {
-      if (!currentChat?._id) return;
       try {
         const res = await axios.get(`/api/messages?conversationId=${currentChat._id}`);
         setMessages(res.data);
@@ -94,6 +86,23 @@ export default function Messenger() {
     };
     getMessages();
   }, [currentChat]);
+
+  useEffect(() => {
+    scrollRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
+
+  // Renderowanie warunkowe
+  if (typeof window === 'undefined') {
+    return null;
+  }
+
+  if (!isLoaded) {
+    return <div>Ładowanie...</div>;
+  }
+
+  if (!clerkUser) {
+    return <div>Nie jesteś zalogowany</div>;
+  }
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -125,10 +134,6 @@ export default function Messenger() {
       console.error("Błąd wysyłania wiadomości:", err);
     }
   };
-
-  useEffect(() => {
-    scrollRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
 
   return (
     <>
