@@ -16,6 +16,16 @@ export default function Profile() {
   const params = useParams();
   const username = params?.username;
 
+  // Obsługa ładowania
+  if (!isLoaded) {
+    return <div>Ładowanie...</div>;
+  }
+
+  // Obsługa braku użytkownika
+  if (!clerkUser) {
+    return <div>Nie jesteś zalogowany</div>;
+  }
+
   useEffect(() => {
     const fetchUser = async () => {
       if (!username) return;
@@ -30,16 +40,6 @@ export default function Profile() {
     
     fetchUser();
   }, [username]);
-
-  // Obsługa ładowania
-  if (!isLoaded) {
-    return <div>Ładowanie...</div>;
-  }
-
-  // Obsługa braku użytkownika
-  if (!clerkUser) {
-    return <div>Nie jesteś zalogowany</div>;
-  }
 
   const PF = process.env.NEXT_PUBLIC_PUBLIC_FOLDER;
 

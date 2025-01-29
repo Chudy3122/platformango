@@ -2,11 +2,10 @@
 
 import dynamic from 'next/dynamic';
 
-// Dynamiczny import wyłączający SSR
-const Messenger = dynamic(() => import('./Messenger'), { 
+const MessengerContent = dynamic(() => import('./Messenger'), { 
   ssr: false 
 });
 
 export default function MessengerPage() {
-  return <Messenger />;
+  return <MessengerContent />;
 }
