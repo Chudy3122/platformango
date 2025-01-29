@@ -10,7 +10,6 @@ import { useUser } from "@clerk/nextjs";
 import { useTranslations } from "@/hooks/useTranslations";
 import { useParams } from "next/navigation";
 import axios from "axios";
-import { io } from "socket.io-client";
 
 export default function Messenger() {
   const { user: clerkUser, isLoaded } = useUser();
@@ -18,76 +17,61 @@ export default function Messenger() {
   const [currentChat, setCurrentChat] = useState(null);
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState("");
-  const [arrivalMessage, setArrivalMessage] = useState(null);
-  const [onlineUsers, setOnlineUsers] = useState([]);
-  const socket = useRef(null);
   const scrollRef = useRef(null);
   const params = useParams();
   const lang = params?.lang || 'pl';
   const t = useTranslations();
 
-  const getOnlineUsers = useCallback(() => {
-    if (socket.current) {
-      socket.current.on("getUsers", (users) => {
-        setOnlineUsers(users);
-      });
-    }
-  }, []);
+  // Pobieranie wiadomości dla aktywnej konwersacji
+  useEffect(() => {
+    let interval;
+    
+    const fetchMessages = async () => {
+      if (!currentChat?.id) return;
+      
+      try {
+        const res = await axios.get(`/api/messages/${currentChat.id}`);
+        setMessages(res.data);
+      } catch (err) {
+        console.error("Błąd pobierania wiadomości:", err);
+      }
+    };
 
-  const initializeSocket = useCallback(() => {
-    if (typeof window === 'undefined' || !isLoaded || !clerkUser) return;
-
-    socket.current = io("ws://localhost:8900");
-    socket.current.on("getMessage", (data) => {
-      setArrivalMessage({
-        sender: data.senderId,
-        text: data.text,
-        createdAt: Date.now(),
-      });
-    });
-
-    socket.current.emit("addUser", clerkUser.id);
-    getOnlineUsers();
+    fetchMessages(); // Pierwsze pobranie
+    interval = setInterval(fetchMessages, 3000); // Sprawdzaj co 3 sekundy
 
     return () => {
-      socket.current?.disconnect();
+      if (interval) clearInterval(interval);
     };
-  }, [clerkUser, isLoaded, getOnlineUsers]);
+  }, [currentChat?.id]);
 
-  useEffect(() => {
-    const cleanup = initializeSocket();
-    return cleanup;
-  }, [initializeSocket]);
-
-  useEffect(() => {
-    if (arrivalMessage && currentChat?.members.includes(arrivalMessage.sender)) {
-      setMessages((prev) => [...prev, arrivalMessage]);
-    }
-  }, [arrivalMessage, currentChat]);
-
+  // Przewijanie do najnowszej wiadomości
   useEffect(() => {
     scrollRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
+  // Pobieranie listy konwersacji
   const fetchConversations = useCallback(async () => {
     if (!clerkUser?.id) return;
+    
     try {
       const res = await axios.get("/api/conversations");
       setConversations(res.data);
     } catch (err) {
       console.error("Błąd pobierania konwersacji:", err);
     }
-  }, [clerkUser]);
+  }, [clerkUser?.id]);
 
   useEffect(() => {
     fetchConversations();
+    const interval = setInterval(fetchConversations, 5000); // Odświeżaj co 5 sekund
+    return () => clearInterval(interval);
   }, [fetchConversations]);
 
-  const handleSubmit = (e) => {
+  // Wysyłanie nowej wiadomości
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!newMessage.trim() || !currentChat?.id || !clerkUser?.id) {
-      return;
-    }
+    if (!newMessage.trim() || !currentChat?.id || !clerkUser?.id) return;
   
     const messageData = {
       content: newMessage,
@@ -95,36 +79,21 @@ export default function Messenger() {
     };
   
     try {
-      const res = axios.post("/api/messages", messageData);
+      const res = await axios.post("/api/messages", messageData);
       setMessages(prev => [...prev, res.data]);
       setNewMessage("");
-  
-      if (socket.current) {
-        const receiverMember = currentChat.members.find(m => m.memberId !== clerkUser.id);
-        if (receiverMember) {
-          socket.current.emit("sendMessage", {
-            senderId: clerkUser.id,
-            receiverId: receiverMember.memberId,
-            text: newMessage,
-          });
-        }
-      }
     } catch (err) {
       console.error("Błąd wysyłania wiadomości:", err);
     }
   };
 
-  // Renderowanie warunkowe
-  if (typeof window === 'undefined') {
-    return null;
-  }
-
-  if (!isLoaded) {
-    return <div>Ładowanie...</div>;
+  // Obsługa stanu ładowania
+  if (typeof window === 'undefined' || !isLoaded) {
+    return <div className="loading-state">Ładowanie...</div>;
   }
 
   if (!clerkUser) {
-    return <div>Nie jesteś zalogowany</div>;
+    return <div className="auth-error">Nie jesteś zalogowany</div>;
   }
 
   return (
@@ -133,10 +102,20 @@ export default function Messenger() {
       <div className="messenger">
         <div className="chatMenu">
           <div className="chatMenuWrapper">
-            <input placeholder={t.messages.search} className="chatMenuInput" />
+            <input 
+              placeholder={t.messages?.search || 'Szukaj'} 
+              className="chatMenuInput" 
+            />
             {conversations.map((c) => (
-              <div key={c._id} onClick={() => setCurrentChat(c)}>
-                <Conversation conversation={c} currentUser={clerkUser} />
+              <div 
+                key={c.id || c._id} 
+                onClick={() => setCurrentChat(c)}
+                className={`conversation-item ${currentChat?.id === c.id ? 'active' : ''}`}
+              >
+                <Conversation 
+                  conversation={c} 
+                  currentUser={clerkUser} 
+                />
               </div>
             ))}
           </div>
@@ -147,26 +126,33 @@ export default function Messenger() {
               <>
                 <div className="chatBoxTop">
                   {messages.map((m) => (
-                    <div key={m._id} ref={scrollRef}>
-                      <Message message={m} own={m.sender === clerkUser.id} />
+                    <div key={m.id || m._id} ref={scrollRef}>
+                      <Message 
+                        message={m} 
+                        own={m.sender === clerkUser.id} 
+                      />
                     </div>
                   ))}
                 </div>
                 <div className="chatBoxBottom">
                   <textarea
                     className="chatMessageInput"
-                    placeholder={t.messages.placeholder}
+                    placeholder={t.messages?.placeholder || 'Napisz wiadomość...'}
                     onChange={(e) => setNewMessage(e.target.value)}
                     value={newMessage}
-                  ></textarea>
-                  <button className="chatSubmitButton" onClick={handleSubmit}>
-                    {t.messages.send}
+                    onKeyPress={(e) => e.key === 'Enter' && !e.shiftKey && handleSubmit(e)}
+                  />
+                  <button 
+                    className="chatSubmitButton" 
+                    onClick={handleSubmit}
+                  >
+                    {t.messages?.send || 'Wyślij'}
                   </button>
                 </div>
               </>
             ) : (
               <span className="noConversationText">
-                {t.messages.searchToChat}
+                {t.messages?.searchToChat || 'Wybierz rozmowę, aby rozpocząć czat'}
               </span>
             )}
           </div>
@@ -174,7 +160,6 @@ export default function Messenger() {
         <div className="chatOnline">
           <div className="chatOnlineWrapper">
             <ChatOnline
-              onlineUsers={onlineUsers}
               currentId={clerkUser.id}
               setCurrentChat={setCurrentChat}
             />

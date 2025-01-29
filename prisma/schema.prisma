@@ -90,13 +90,13 @@ model Parent {
   address       String
   createdAt     DateTime       @default(now())
   students      Student[]
-  createdEvents Event[]        @relation("ParentEvents") // Dodane
-  eventComments EventComment[] @relation("ParentComments") // Dodane
-  files         LibraryFile[] // Pliki posiadane przez rodzica
-  sharedToMe    FileShare[]    @relation("SharedToParent") // Pliki udostępnione rodzicowi
-  sharedByMe    FileShare[]    @relation("SharedByParent") // Pliki udostępnione przez rodzica
-  isOnline     Boolean   @default(false)
-  lastActive   DateTime  @default(now())
+  createdEvents Event[]        @relation("ParentEvents")
+  eventComments EventComment[] @relation("ParentComments")
+  files         LibraryFile[]
+  sharedToMe    FileShare[]    @relation("SharedToParent")
+  sharedByMe    FileShare[]    @relation("SharedByParent")
+  isOnline      Boolean        @default(false)
+  lastActive    DateTime       @default(now())
 }
 
 model LibraryFile {
