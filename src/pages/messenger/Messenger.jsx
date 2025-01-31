@@ -9,6 +9,10 @@ import axios from "axios";
 import { io } from "socket.io-client";
 import { useUser } from "@clerk/clerk-react";
 
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
+export const revalidate = 0;
+
 export default function Messenger() {
   const [conversations, setConversations] = useState([]);
   const [currentChat, setCurrentChat] = useState(null);
@@ -19,57 +23,6 @@ export default function Messenger() {
   const { user } = useUser();
   const scrollRef = useRef();
 
-  // Inicjalizacja Socket.IO
-  useEffect(() => {
-    if (!socket.current && user?.id) {
-      socket.current = io("http://localhost:8900", {
-        transports: ['websocket', 'polling'],
-        reconnection: true,
-        reconnectionAttempts: 5,
-        reconnectionDelay: 1000,
-        withCredentials: true
-      });
-
-      socket.current.on("connect", () => {
-        console.log("Socket connected successfully");
-      });
-
-      socket.current.on("getMessage", (data) => {
-        setArrivalMessage({
-          senderId: data.senderId,
-          content: data.text,
-          createdAt: new Date(),
-        });
-      });
-
-      socket.current.on("connect_error", (error) => {
-        console.error("Socket connection error:", error);
-      });
-
-      return () => {
-        if (socket.current) {
-          console.log("Disconnecting socket");
-          socket.current.disconnect();
-        }
-      };
-    }
-  }, [user]);
-
-  // Dodawanie użytkownika do Socket.IO po połączeniu
-  useEffect(() => {
-    if (user?.id && socket.current?.connected) {
-      socket.current.emit("addUser", user.id);
-      console.log("Added user to socket:", user.id);
-    }
-  }, [user, socket.current?.connected]);
-
-  // Obsługa nowych wiadomości przychodzących przez Socket.IO
-  useEffect(() => {
-    if (arrivalMessage && currentChat?.members?.some(m => m.memberId === arrivalMessage.senderId)) {
-      setMessages(prev => [...prev, arrivalMessage]);
-    }
-  }, [arrivalMessage, currentChat]);
-
   // Pobieranie konwersacji
   useEffect(() => {
     const fetchConversations = async () => {
@@ -77,15 +30,12 @@ export default function Messenger() {
 
       try {
         const res = await axios.get('/api/conversations');
-        console.log("Fetched conversations:", res.data);
-
         if (Array.isArray(res.data)) {
-          const formattedConversations = res.data.map(conv => ({
+          setConversations(res.data.map(conv => ({
             ...conv,
             id: conv.id,
             _id: conv.id
-          }));
-          setConversations(formattedConversations);
+          })));
         }
       } catch (err) {
         console.error("Error fetching conversations:", err);
@@ -93,7 +43,10 @@ export default function Messenger() {
       }
     };
 
-    fetchConversations();
+    const interval = setInterval(fetchConversations, 5000); // Odświeżaj co 5 sekund
+    fetchConversations(); // Pierwsze pobranie
+
+    return () => clearInterval(interval);
   }, [user]);
 
   // Pobieranie wiadomości dla aktualnej konwersacji
@@ -109,9 +62,10 @@ export default function Messenger() {
       }
     };
 
-    if (currentChat) {
-      getMessages();
-    }
+    const interval = setInterval(getMessages, 3000); // Odświeżaj co 3 sekundy
+    getMessages(); // Pierwsze pobranie
+
+    return () => clearInterval(interval);
   }, [currentChat]);
 
   // Automatyczne przewijanie do najnowszej wiadomości
@@ -122,9 +76,7 @@ export default function Messenger() {
   // Wysyłanie wiadomości
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!newMessage.trim() || !currentChat?.id || !user?.id) {
-      return;
-    }
+    if (!newMessage.trim() || !currentChat?.id || !user?.id) return;
 
     const messageData = {
       content: newMessage,
@@ -135,22 +87,14 @@ export default function Messenger() {
       const res = await axios.post("/api/messages", messageData);
       setMessages(prev => [...prev, res.data]);
       setNewMessage("");
-
-      // Wysyłanie przez Socket.IO
-      if (socket.current) {
-        const receiverMember = currentChat.members.find(m => m.memberId !== user.id);
-        if (receiverMember) {
-          socket.current.emit("sendMessage", {
-            senderId: user.id,
-            receiverId: receiverMember.memberId,
-            text: newMessage,
-          });
-        }
-      }
     } catch (err) {
       console.error("Error sending message:", err);
     }
   };
+
+  if (typeof window === 'undefined' || !user) {
+    return <div>Ładowanie...</div>;
+  }
 
   return (
     <div className="messenger">
@@ -158,7 +102,7 @@ export default function Messenger() {
         <div className="chatMenuWrapper">
           <SearchCreateConversation 
             onConversationCreated={(receiverId, receiverType) => {
-              // Tutaj dodaj logikę tworzenia nowej konwersacji
+              // Handle new conversation
             }}
             currentChat={currentChat}
           />

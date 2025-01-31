@@ -1,5 +1,12 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  // Dodajemy eksperymentalne funkcje
+  experimental: {
+    appDir: true,
+    serverActions: true,
+  },
+  
+  // Konfiguracja nagłówków CORS
   async headers() {
     return [
       {
@@ -13,7 +20,10 @@ const nextConfig = {
       },
     ];
   },
+
+  // Konfiguracja obrazów
   images: {
+    domains: ['localhost', 'firebasestorage.googleapis.com'],
     remotePatterns: [
       {
         protocol: 'http',
@@ -29,6 +39,8 @@ const nextConfig = {
       }
     ],
   },
+
+  // Konfiguracja webpack
   webpack: (config, { isServer }) => {
     if (!isServer) {
       config.resolve.fallback = {
@@ -41,6 +53,16 @@ const nextConfig = {
     }
     return config;
   },
+
+  // Dodajemy konfigurację dla Clerk
+  env: {
+    NEXT_PUBLIC_CLERK_FRONTEND_API: process.env.NEXT_PUBLIC_CLERK_FRONTEND_API,
+    CLERK_API_KEY: process.env.CLERK_API_KEY,
+  },
+
+  // Konfiguracja stron statycznych
+  staticPageGenerationTimeout: 120,
+  reactStrictMode: true,
 };
 
-export default nextConfig;
+module.exports = nextConfig;

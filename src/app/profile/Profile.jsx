@@ -1,5 +1,6 @@
 'use client';
 
+import Image from "next/image";
 import { useEffect, useState } from "react";
 import axios from "axios";
 import { useUser } from "@clerk/nextjs";
@@ -8,6 +9,10 @@ import { useParams } from "next/navigation";
 import "./profile.css";
 import Topbar from "../../components/topbar/page";
 import Sidebar from "../../components/Sidebar";
+
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
+export const revalidate = 0;
 
 export default function Profile() {
   const { user: clerkUser, isLoaded } = useUser();
@@ -20,7 +25,7 @@ export default function Profile() {
       if (!username) return;
       
       try {
-        const res = await axios.get(`/users?username=${username}`);
+        const res = await axios.get(`/api/users?username=${username}`);
         setUser(res.data);
       } catch (error) {
         console.error("Error fetching user:", error);
@@ -30,15 +35,13 @@ export default function Profile() {
     fetchUser();
   }, [username]);
 
-  if (!isLoaded) {
+  if (typeof window === 'undefined' || !isLoaded) {
     return <div>Ładowanie...</div>;
   }
 
   if (!clerkUser) {
     return <div>Nie jesteś zalogowany</div>;
   }
-
-  const PF = process.env.NEXT_PUBLIC_PUBLIC_FOLDER;
 
   return (
     <>
@@ -48,32 +51,30 @@ export default function Profile() {
         <div className="profileRight">
           <div className="profileRightTop">
             <div className="profileCover">
-              <img
+              <Image
                 className="profileCoverImg"
-                src={
-                  user.coverPicture
-                    ? `${PF}${user.coverPicture}`
-                    : `${PF}person/noCover.png`
-                }
-                alt=""
+                src={user.coverPicture || '/images/person/noCover.png'}
+                alt="Cover"
+                width={1024}
+                height={300}
+                priority
               />
-              <img
+              <Image
                 className="profileUserImg"
-                src={
-                  user.profilePicture
-                    ? `${PF}${user.profilePicture}`
-                    : `${PF}person/noAvatar.png`
-                }
-                alt=""
+                src={user.profilePicture || '/images/person/noAvatar.png'}
+                alt="Profile"
+                width={150}
+                height={150}
+                priority
               />
             </div>
             <div className="profileInfo">
-              <h4 className="profileInfoName">{user.username}</h4>
-              <span className="profileInfoDesc">{user.desc}</span>
+              <h4 className="profileInfoName">{user.username || clerkUser.username}</h4>
+              <span className="profileInfoDesc">{user.desc || 'Brak opisu'}</span>
             </div>
           </div>
           <div className="profileRightBottom">
-            {/* Usuń komponenty Feed i Rightbar */}
+            {/* Miejsce na dodatkowe komponenty */}
           </div>
         </div>
       </div>
