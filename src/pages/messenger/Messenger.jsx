@@ -6,8 +6,7 @@ import Message from "@/components/message/page";
 import SearchCreateConversation from "@/components/searchCreateConversation/page";
 import { useEffect, useState, useRef } from "react";
 import axios from "axios";
-import { io } from "socket.io-client";
-import { useUser } from "@clerk/clerk-react";
+import { useUser } from "@clerk/nextjs";
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -19,9 +18,8 @@ export default function Messenger() {
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState("");
   const [arrivalMessage, setArrivalMessage] = useState(null);
-  const socket = useRef();
-  const { user } = useUser();
-  const scrollRef = useRef();
+  const scrollRef = useRef(null);
+  const { user, isLoaded } = useUser();
 
   // Pobieranie konwersacji
   useEffect(() => {
@@ -92,8 +90,14 @@ export default function Messenger() {
     }
   };
 
-  if (typeof window === 'undefined' || !user) {
+  // Obsługa stanu ładowania
+  if (!isLoaded) {
     return <div>Ładowanie...</div>;
+  }
+
+  // Obsługa braku zalogowania
+  if (!user) {
+    return <div>Zaloguj się, aby kontynuować</div>;
   }
 
   return (

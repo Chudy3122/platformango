@@ -1,11 +1,11 @@
+"use client";
 import "./page.css";
 import { Search, Person, Chat, Notifications } from "@mui/icons-material";
 import Link from 'next/link';
-import { useUser } from "@clerk/clerk-react"; // Używamy Clerk do zarządzania użytkownikami
+import { useUser } from "@clerk/nextjs"; // Zmieniono import na @clerk/nextjs
 
 export default function Topbar() {
-  const { user } = useUser();  // Pobieramy aktualnie zalogowanego użytkownika z Clerk
-  const PF = process.env.REACT_APP_PUBLIC_FOLDER;
+  const { user, isLoaded } = useUser();  // Dodano isLoaded dla lepszej obsługi stanu
 
   const renderUserSpecificContent = () => {
     if (!user) return null;
@@ -24,8 +24,14 @@ export default function Topbar() {
     }
   };
 
-  if (!user) {
+  // Obsługa stanu ładowania
+  if (!isLoaded) {
     return <div>Loading...</div>;
+  }
+
+  // Obsługa braku zalogowania
+  if (!user) {
+    return <div>Please log in</div>;
   }
 
   return (
